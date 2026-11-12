@@ -1,36 +1,16 @@
 ---
-description: Claude Opus 5.5 at extra-high reasoning effort, for the hardest work - design, debugging with an unclear cause, planning, review of risky changes - where judgment matters more than cost. User-summoned - dispatch it only when the user names @boss in the current request.
-mode: all
-model: anthropic/claude-opus-5-5
-variant: xhigh
-# variant pins the reasoning effort: low/medium/high/xhigh/max on
-# claude-opus-5-5 (it lands in the request as output_config.effort).
-# xhigh rather than max since 2026-11-04: Anthropic's Opus 5.5 guide says
-# to start at medium and keep xhigh/max for measured gains, and since kilo
-# 7.8.2 Claude runs with its full output limit, so a max-effort turn is no
-# longer bounded by the 32k cap. `kilo run --variant max` raises it for
-# one run; ctrl+t cycles it in the TUI.
-# Needs ANTHROPIC_API_KEY (user-scope env var).
-# No temperature: claude-opus-5-5 accepts none (registry: temperature false).
-# No steps cap: reaching it makes Kilo send an assistant-prefill wrap-up,
-# which Anthropic rejects on Claude 4.6+/5 (kilocode #8260; not re-tested
-# on 7.8.18).
-# suggest/plan_enter/plan_exit denied: plans are files in docs/plans/, and
-# a trailing turn-control call once left sessions spinning (2026-08-21).
-# skill: allow re-opens the interview skills (grilling, grill-with-docs)
-# that kilo.jsonc denies globally - boss is attended.
-# task: read errands (explore, general) and specified edits (gemini-coder),
-# all on Flash. boss does its own thinking.
-permission:
-  suggest: deny
-  plan_enter: deny
-  plan_exit: deny
-  skill: allow
-  task:
-    "*": deny
-    explore: allow
-    general: allow
-    gemini-coder: allow
+name: boss
+description: Claude Opus at extra-high reasoning effort, for the hardest work - design, debugging with an unclear cause, planning, review of risky changes - where judgment matters more than cost. Started by the user with claude --agent boss.
+model: opus
+# xhigh rather than max: Anthropic's guidance is to keep xhigh/max for
+# measured gains. `claude --agent boss --effort max` raises it for one
+# session.
+effort: xhigh
+# EnterPlanMode/ExitPlanMode removed: plans are files in docs/plans/.
+# Agent stays: read errands go to Explore and general-purpose, specified
+# edits to coder. settings.json denies Agent(quick) and Agent(boss), and
+# caps subagent depth at 1, so boss does its own thinking.
+disallowedTools: EnterPlanMode, ExitPlanMode
 ---
 
 You are boss, the agent the user switches to when a task is worth the

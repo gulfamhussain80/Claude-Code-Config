@@ -1,37 +1,14 @@
 ---
-description: Cheap implementer on Gemini 3.8 Flash for one fully specified change. Brief it with the files, the exact edit or behaviour, the test to add, and the command that proves it; it implements, runs tests and lint, and reports its diff. It never commits - the caller reviews the diff and commits. Not for design, open-ended exploration, or decisions the brief does not settle.
-mode: subagent
-model: google/gemini-3.8-flash
-# No temperature: Gemini 3.6+ ignores custom sampling values and will
-# reject them with HTTP 400 in a future release (ai.google.dev, prompting
-# strategies, read 2026-11-04).
-# No steps cap: hitting it makes Kilo append a trailing model-turn wrap-up,
-# which Gemini rejects ("Requests ending with a model turn are not
-# supported") - verified live 2026-08-08; not re-tested on 7.8.18.
-# Kilo itself denies question, suggest, and task in every subagent
-# (KiloTask.permissions); plan_enter/plan_exit stay denied here because a
-# completed plan_exit parks a child session on a follow-up no one answers.
+name: coder
+description: Cheap implementer on Claude Haiku for one fully specified change. Brief it with the files, the exact edit or behaviour, the test to add, and the command that proves it; it implements, runs tests and lint, and reports its diff. It never commits - the caller reviews the diff and commits. Not for design, open-ended exploration, or decisions the brief does not settle.
+model: haiku
+# Claude Code itself withholds AskUserQuestion and plan mode from every
+# subagent. Agent removed: coder dispatches nothing.
 # git: the caller owns history. This agent shares the caller's working
 # tree, so checkout/restore/stash/reset could destroy the caller's
-# uncommitted work. Frontmatter rules append after the global ones
-# (Permission.merge is a flat concat; last match wins), so these denies
-# override the global bash allow.
-permission:
-  plan_enter: deny
-  plan_exit: deny
-  bash:
-    "git commit*": deny
-    "git push*": deny
-    "git reset*": deny
-    "git checkout*": deny
-    "git switch*": deny
-    "git restore*": deny
-    "git stash*": deny
-    "git rebase*": deny
-    "git merge*": deny
-    "git cherry-pick*": deny
-    "git revert*": deny
-    "git tag*": deny
+# uncommitted work. Frontmatter cannot deny single commands, so
+# hooks/claude-config-guard.cjs blocks them when agent_type is coder.
+disallowedTools: Agent
 ---
 
 You implement one change that another agent has fully specified. The
@@ -48,8 +25,6 @@ contract.
   discarding changes to it. It reviews your diff and commits.
 - Call only functions and APIs whose definition or docs you have opened.
   If you cannot find one, say so in the report.
-- Each response is capped at 32,000 output tokens. Write a large file in
-  sections: create it, then append.
 
 ## Steps
 

@@ -1,8 +1,8 @@
-// Kilo launchers for herdr (README "Herdr"). The installers copy this file
+// Claude Code launchers for herdr (README "Herdr"). The installers copy this file
 // next to herdr's config.toml, whose keys run it as
 //   node -e "require(<this file>)" tab|worktree|folder
-// and the optional `hk` shell function runs `node kilo.cjs open [folder]`.
-// Node only: Kilo already requires it, on Windows and macOS alike.
+// and the optional `hc` shell function runs `node claude.cjs open [folder]`.
+// Node only: the installers already require it, on Windows and macOS alike.
 'use strict';
 const { execFileSync, spawnSync } = require('node:child_process');
 const fs = require('node:fs');
@@ -20,14 +20,14 @@ const json = (args) => JSON.parse(herdr(args));
 
 // `pane run` writes to the pane at once, with no readiness check, so wait
 // for the new shell's first output before typing into it.
-function startKilo(created) {
+function startClaude(created) {
   const pane = created.result.root_pane.pane_id;
   try { herdr(['pane', 'wait-output', pane, '--regex', '\\S', '--timeout', '15000']); } catch {}
-  herdr(['pane', 'run', pane, 'kilo']);
+  herdr(['pane', 'run', pane, 'claude --agent quick']);
 }
 
 const openFolder = (dir) =>
-  startKilo(json(['workspace', 'create', '--cwd', dir, '--label', path.basename(dir) || dir, '--focus']));
+  startClaude(json(['workspace', 'create', '--cwd', dir, '--label', path.basename(dir) || dir, '--focus']));
 
 const home = (p) => p.replace(/^~(?=$|[\\/])/, os.homedir());
 
@@ -73,7 +73,7 @@ const modes = {
   // ctrl+q a: new tab in the focused workspace
   tab() {
     const ws = process.env.HERDR_ACTIVE_WORKSPACE_ID;
-    startKilo(json(['tab', 'create', ...(ws ? ['--workspace', ws] : []), '--focus']));
+    startClaude(json(['tab', 'create', ...(ws ? ['--workspace', ws] : []), '--focus']));
   },
   // ctrl+q shift+a: new worktree of the focused workspace's repo
   async worktree() {
@@ -81,7 +81,7 @@ const modes = {
     if (!branch) return;
     const ws = process.env.HERDR_ACTIVE_WORKSPACE_ID;
     const from = ws ? ['--workspace', ws] : ['--cwd', process.cwd()];
-    startKilo(json(['worktree', 'create', ...from, '--branch', branch, '--focus']));
+    startClaude(json(['worktree', 'create', ...from, '--branch', branch, '--focus']));
   },
   // ctrl+q f: any folder as a new workspace, starting from the parent folder
   async folder() {
@@ -89,7 +89,7 @@ const modes = {
     const answer = await ask('Folder to open: ', path.join(path.dirname(here), path.sep), completeDirs);
     if (answer.trim()) openFolder(resolveDir(answer));
   },
-  // hk: from any terminal. With no server running, `herdr` below starts one
+  // hc: from any terminal. With no server running, `herdr` below starts one
   // and restores the saved session instead.
   open() {
     const dir = resolveDir(arg || '.');
@@ -104,14 +104,14 @@ function message(err) {
 
 Promise.resolve()
   .then(() => {
-    if (!Object.hasOwn(modes, mode)) throw new Error(`usage: kilo.cjs ${Object.keys(modes).join('|')} [folder]`);
+    if (!Object.hasOwn(modes, mode)) throw new Error(`usage: claude.cjs ${Object.keys(modes).join('|')} [folder]`);
     return modes[mode]();
   })
   .then(() => process.exit(0), async (err) => {
     const text = message(err);
     if (mode === 'tab') {
       // runs detached from any terminal, so report through herdr
-      try { herdr(['notification', 'show', 'Kilo launcher failed', '--body', text]); } catch {}
+      try { herdr(['notification', 'show', 'Claude launcher failed', '--body', text]); } catch {}
     } else {
       console.error(text);
       if (mode !== 'open') await ask('Press Enter to close ');

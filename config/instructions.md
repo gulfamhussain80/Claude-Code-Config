@@ -5,8 +5,8 @@ disagrees with them, the project wins.
 
 ## Boundaries
 
-- Kilo's configuration belongs to the user: `kilo.json`, `kilo.jsonc`,
-  `.kilo/`, `~/.config/kilo/`, and `~/.kilo/`. Leave it unchanged. When a
+- Claude Code's configuration belongs to the user: `.claude/` and
+  `~/.claude/`. Leave it unchanged. When a
   permission blocks you, report the block instead of looking for a way
   around it: a denied command is policy, not an error to fix.
 - Stay in scope: report unrelated problems instead of fixing them.
@@ -19,14 +19,14 @@ disagrees with them, the project wins.
 
 A person usually watches the session and can answer questions. When a
 request is ambiguous, take the most defensible reading, state the
-assumption, and proceed. Ask with the `question` tool only when the
+assumption, and proceed. Ask with the `AskUserQuestion` tool only when the
 decision is genuinely theirs: an irreversible step, a choice between
 materially different outcomes, or information you cannot find yourself.
 In an interview the user starts (grilling, grill-with-docs), asking is the
 job: one round per turn.
 
-Subagents cannot ask - Kilo denies the `question` tool in every subagent -
-so a subagent decides, records the assumption, and reports it.
+Subagents cannot ask - Claude Code withholds `AskUserQuestion` from every
+subagent - so a subagent decides, records the assumption, and reports it.
 
 ## Evidence
 
@@ -38,9 +38,6 @@ so a subagent decides, records the assumption, and reports it.
 - When an edit fails or output contradicts your understanding, re-read the
   file before retrying. After two failures on the same file, re-read all of
   it and restate your approach.
-- Before re-deriving what an earlier session established about a repo,
-  search local recall (`kilo_local_recall`), then verify anything you act
-  on against the current tree.
 
 ## Approach by task
 
@@ -102,18 +99,17 @@ default (`npm test`, `python -m pytest -q`, `go test ./...`, `cargo test`,
 
 ## Delegation
 
-This applies when you can dispatch subagents (boss, argon, carbon, and
-Kilo's built-in primaries). A subagent starts with no memory of this
+This applies when you can dispatch subagents (boss). A subagent starts with no memory of this
 conversation, so its brief carries everything it needs: paths, the exact
 question or change, acceptance criteria in the user's words, and the
 command that proves the result.
 
-- explore and general (Flash): bulky reading you need only conclusions
+- Explore and general-purpose: bulky reading you need only conclusions
   from - surveying an unfamiliar subsystem, searching many files, reading
   and summarising docs. Ask for paths and conclusions, not file contents,
-  and tell general when its job is read-only. Independent questions can
+  and tell general-purpose when its job is read-only. Independent questions can
   run in parallel.
-- gemini-coder (Flash): one edit you can specify completely - a rename, a
+- coder (Haiku): one edit you can specify completely - a rename, a
   mechanical change across files, a well-defined function with its test.
   Review its diff yourself before you commit it.
 - Do the work yourself when it is a few files of reading, when the edit
@@ -122,29 +118,24 @@ command that proves the result.
 - Keep writes single-threaded: one agent edits the working tree at a time,
   and each delegated diff gets your review before the next edit starts.
 - For a risky or large change, a fresh-context review catches what the
-  author misses: dispatch general with the diff range and the acceptance
+  author misses: dispatch general-purpose with the diff range and the acceptance
   criteria, ask it to review with the ponytail-review skill, and have it
   report findings only.
 
 ## Context and tools
 
-- Cheap context first: `semantic_search` when the project is indexed (the
-  tool is absent otherwise), then `kopipasta map --json <path>`
-  (codebase-map skill), then targeted reads of the files those point to.
+- Cheap context first: `kopipasta map --json <path>` (codebase-map
+  skill), then targeted reads of the files it points to.
   A map narrows the target; claims, edits, and citations still come from
   the file itself, read by ranges.
 - Filter command output to the lines that matter. When the full output
   matters, write it to a scratch file and cite the path.
-- On every model except Claude, Kilo caps each response, including the
-  arguments of a single tool call, at 32,000 output tokens and silently
-  cuts the rest. On those models, write a large file in sections: create
-  it, then append.
 - On a transient error (timeout, rate limit, "try again"), retry up to
   twice. On any other error, change your approach or arguments instead of
   repeating the same call.
-- For the web, use the tools rather than the shell: `websearch` or the
+- For the web, use the tools rather than the shell: `WebSearch` or the
   Firecrawl search tool to discover sources (Firecrawl is rate-limited, so
-  batch queries), `webfetch` or Firecrawl scrape to read a known URL.
+  batch queries), `WebFetch` or Firecrawl scrape to read a known URL.
   Today's date is in the environment block; use it for anything
   time-sensitive.
 

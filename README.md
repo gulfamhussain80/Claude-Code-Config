@@ -1,60 +1,66 @@
-# Kilo Code CLI config
+# Claude Code config
 
-A global configuration for the [Kilo Code CLI](https://kilo.ai) with:
+A global configuration for [Claude Code](https://code.claude.com) that
+runs on your Claude subscription, with:
 
-- four agents you talk to;
+- two agents you talk to;
 - one cheap implementer they delegate to;
 - a vendored skill set;
-- an allow/deny permission envelope.
+- an allow/deny permission envelope;
+- an optional [herdr](https://herdr.dev) workspace for many sessions.
 
-You bring your own API keys; no Kilo account or gateway is required.
-Pinned to Kilo CLI 7.8.18 and last verified on Windows 10 22H2
-(2026-11-04). The config itself is OS-agnostic.
+It is a fork of
+[Git-Uzair/Kilo-Code-Config](https://github.com/Git-Uzair/Kilo-Code-Config),
+which builds the same harness on the Kilo CLI with API keys. Kilo cannot
+use a Claude subscription: Anthropic limits subscription login to its own
+clients. So this fork configures Claude Code itself. The herdr layer, the
+skills, and the working rules are the same; the pane shows Claude Code's
+TUI instead of Kilo's.
+
+No API key is needed for the models. Last verified on Claude Code 2.1.322
+and herdr 0.9.5, on macOS (2026-11-12). The Windows installer is ported
+but has not been run.
 
 ## Agents
 
 | Agent | Model | Role |
 |---|---|---|
-| **quick** *(default)* | gemini-3.8-flash *(Google)* | Small, well-defined tasks done end to end while you watch. Works alone, writes no plan files, commits only when asked. |
-| **boss** | claude-opus-5-5 @ xhigh *(Anthropic)* | The hardest work: design, debugging with an unclear cause, planning, review of risky changes. Delegates errands to Flash. |
-| **argon** | gemini-4-argon @ high *(Google)* | The same role as boss, on Google's frontier model. |
-| **carbon** | gemini-4-carbon @ high *(Google)* | The same role as argon, on Google's deepest-reasoning model: more thinking per turn, slower and more tokens. Gemini API paid tier only. |
-| **gemini-coder** | gemini-3.8-flash *(Google)* | Subagent for boss, argon, and carbon: implements one fully specified change test-first, runs tests and lint, reports its diff, and never commits. |
-| explore, general | gemini-3.8-flash *(Google)* | Kilo's built-in subagents, pinned to Flash, for bulky reading and research. |
+| **quick** | Sonnet | Small, well-defined tasks done end to end while you watch. Works alone, writes no plan files, commits only when asked. |
+| **boss** | Opus @ xhigh | The hardest work: design, debugging with an unclear cause, planning, review of risky changes. Delegates errands. |
+| **coder** | Haiku | Subagent for boss: implements one fully specified change test-first, runs tests and lint, reports its diff, and never commits. |
+| Explore, general-purpose | built-in | Claude Code's built-in subagents, for bulky reading and research. general-purpose is pinned to Sonnet. |
 
 **How work flows.**
 
-- Every session starts in quick. Tab cycles to boss, argon, and carbon
-  (and to Kilo's built-in primaries).
-- boss, argon, and carbon do the reasoning and the delicate edits
-  themselves.
-- They delegate two kinds of work: bulky reading goes to explore or
-  general, and edits they can specify completely go to gemini-coder.
+- Start a session with `claude --agent quick` or `claude --agent boss`.
+  herdr's Claude keys start quick.
+- boss does the reasoning and the delicate edits itself.
+- It delegates two kinds of work: bulky reading goes to Explore or
+  general-purpose, and edits it can specify completely go to coder.
 - Writes stay single-threaded: one agent edits the tree at a time, and
-  the delegating agent reviews every delegated diff before committing it.
-- For a risky change they can ask general for a fresh-context review
-  using the ponytail-review skill.
+  boss reviews every delegated diff before committing it.
+- For a risky change boss can ask general-purpose for a fresh-context
+  review using the ponytail-review skill.
 
-**Why this shape.** Until 2026-11-04 this repo ran an eleven-agent
-pipeline: a Flash conductor routed every request through planners,
-coders, and verifiers. It was replaced on evidence.
+**Permissions are allow/deny only, so sessions never stall on approval
+prompts.** Every tool is allowed by name, and a deny-list blocks
+destructive commands outright: deletion, force-push, non-localhost
+network, system mutation, and publishing. File tools cannot read or write
+outside the project.
 
-- Cognition (2026-04-22, cognition.com/blog/multi-agents-working) found
-  that multi-agent systems "work best today when writes stay
-  single-threaded and the additional agents contribute intelligence
-  rather than actions".
-- The same post found that when a weaker model decides when to escalate,
-  "the quality ceiling was set by the primary".
+## Differences from the Kilo version
 
-So the strong models now sit in front, and the cheap ones run errands.
-
-**Permissions are allow/deny only - zero "ask" rules - so sessions never
-stall on approval prompts.** A deny-list blocks destructive commands
-outright: deletion, force-push, non-localhost network, system mutation,
-and publishing.
+- **No Tab to switch agents.** Claude Code picks the agent when the
+  session starts. Open a new tab for boss instead.
+- **No default agent.** Plain `claude` is an ordinary Claude Code session
+  under the same permissions. See the design notes for why.
+- **No argon or carbon.** They are Gemini models.
+- **No codebase indexing**, and compaction is Claude Code's own.
 
 ## Requirements
 
+- Claude Code on PATH, logged in with a Claude subscription (`claude`,
+  then `/login`).
 - Node.js 22+ (the Firecrawl MCP server requires it) and git on PATH.
 - Windows: PowerShell 7 (recommended). Windows PowerShell 5.1 also
   works, but its default execution policy on Windows clients
@@ -63,98 +69,81 @@ and publishing.
   macOS/Linux: bash.
 - Google Chrome, for the browser tools: the Playwright MCP server drives
   it. The installer warns when it is missing.
-- API keys, set as user-scope environment variables (never stored in this
-  repo):
-  - `GOOGLE_GENERATIVE_AI_API_KEY`, from
-    [Google AI Studio](https://aistudio.google.com). It runs quick, argon,
-    carbon (paid tier), gemini-coder, the built-in subagents, compaction, and the
-    codebase-indexing embeddings.
-  - `ANTHROPIC_API_KEY` - powers boss. Everything else runs without it.
-  - `FIRECRAWL_API_KEY` *(optional)* - Firecrawl MCP for web search and
-    scraping. Without it, remove the `mcp.firecrawl` block from
-    `config/kilo.jsonc`.
-  - `GEMINI_API_KEY` *(optional)* - only for `kopipasta ask`.
+- Optional keys, set as user-scope environment variables (never stored in
+  this repo):
+  - `FIRECRAWL_API_KEY` - Firecrawl MCP for web search and scraping.
+    Without it, run `claude mcp remove --scope user firecrawl`.
+  - `GEMINI_API_KEY` - only for `kopipasta ask`.
 
-Set the keys before or after installing (the installer prints these
-commands too):
-
-```powershell
-# Windows (user scope)
-[Environment]::SetEnvironmentVariable("GOOGLE_GENERATIVE_AI_API_KEY","<your-google-key>","User")
-[Environment]::SetEnvironmentVariable("ANTHROPIC_API_KEY","<anthropic-key-for-boss>","User")
-[Environment]::SetEnvironmentVariable("FIRECRAWL_API_KEY","<optional-firecrawl-key>","User")
-```
-
-```bash
-# macOS / Linux (add to your shell profile)
-export GOOGLE_GENERATIVE_AI_API_KEY="<your-google-key>"
-export ANTHROPIC_API_KEY="<anthropic-key-for-boss>"
-export FIRECRAWL_API_KEY="<optional-firecrawl-key>"
-```
-
-Then open a new terminal before starting `kilo`: a process that is
-already running keeps the environment it started with.
+Leave `ANTHROPIC_API_KEY` unset. Claude Code uses an approved API key
+before the subscription login and bills the key. `/status` shows which
+one is active.
 
 ## Install
 
 ```powershell
 # Windows
-git clone https://github.com/Git-Uzair/Kilo-Code-Config.git kilo-config
-cd kilo-config
-./install.ps1            # pinned versions; -Latest for newest
+git clone https://github.com/gulfamhussain80/Claude-Code-Config.git claude-config
+cd claude-config
+./install.ps1            # pinned MCP servers; -Latest for newest
 ```
 
 ```bash
 # macOS / Linux
-git clone https://github.com/Git-Uzair/Kilo-Code-Config.git kilo-config
-cd kilo-config && ./install.sh   # --latest for newest
+git clone https://github.com/gulfamhussain80/Claude-Code-Config.git claude-config
+cd claude-config && ./install.sh   # --latest for newest
 ```
 
 The installer:
 
-1. checks for Node.js 22+ and backs up any existing `~/.config/kilo`
-   and `~/.kilo`;
-2. installs, globally via npm and at pinned versions, the Kilo CLI
-   (`@kilocode/cli@7.8.18`) and the two MCP servers the config launches
-   (`firecrawl-mcp@3.36.1`, `@playwright/mcp@0.0.84`), then checks for
-   Google Chrome;
-3. copies this config, mirroring `config/agents/` into
-   `~/.config/kilo/agents` and `skills/` into `~/.kilo/skills`, and
-   removing any agent or skill this repo no longer ships (the backup
-   keeps them);
-4. installs `kopipasta` (via `uv` or `pip`, best effort);
-5. if `herdr` is on PATH, installs its config and Kilo plugin (see
+1. checks for Claude Code and Node.js 22+;
+2. installs, globally via npm and at pinned versions, the two MCP servers
+   the config launches (`firecrawl-mcp@3.36.1`,
+   `@playwright/mcp@0.0.84`), then checks for Google Chrome;
+3. merges this config into `~/.claude` (see below);
+4. registers both MCP servers at user scope with `claude mcp add`;
+5. installs `kopipasta` (via `uv` or `pip`, best effort);
+6. if `herdr` is on PATH, installs its config and Claude integration (see
    [Herdr](#herdr-one-place-for-many-sessions));
-6. prints the environment-variable commands for your keys;
 7. lists the installed agents and the status of both MCP servers.
+
+**What it does to `~/.claude`.** That folder is yours, so the installer
+merges instead of replacing. It backs up each file before changing it.
+
+- `settings.json`: adds this repo's allow and deny rules, its two
+  `permissions` flags, two `env` values, and one `PreToolUse` hook.
+  Everything else in the file is kept.
+- `CLAUDE.md`: appends one line, `@standing-instructions.md`. The
+  instructions themselves live in `~/.claude/standing-instructions.md`.
+- `agents/` and `skills/`: copies this repo's agents and skills by name.
+  Your own are left alone. `claude-code-config.json` records what was
+  installed, so a later install removes only what this repo once shipped.
+- `hooks/claude-config-guard.cjs`: the hook script.
 
 Then verify, in a new terminal:
 
-```powershell
-kilo agent list   # expect quick, boss, argon, carbon, gemini-coder (plus Kilo's built-ins)
-kilo mcp list     # expect firecrawl and playwright: connected
+```bash
+ls ~/.claude/agents  # expect quick.md, boss.md, coder.md (plus your own)
+claude mcp list      # expect firecrawl and playwright: connected
 ```
 
 ## Usage
 
-```powershell
-# interactive TUI, starting in quick; Tab cycles to boss, argon, and carbon
-kilo
+```bash
+# interactive session in quick
+claude --agent quick
 
-# start in a heavyweight
-kilo --agent boss
-kilo --agent argon
-kilo --agent carbon
+# the heavyweight
+claude --agent boss
 
-# one headless run (--auto approves anything not explicitly denied)
-kilo run --dir "C:\path\to\repo" --agent boss --auto "implement X with tests"
+# one headless run
+claude -p --agent boss "implement X with tests"
 
-# boss at max effort for one run (its default is xhigh);
-# in the TUI, ctrl+t cycles the current model's variant (its effort level)
-kilo run --agent boss --variant max "..."
+# boss at max effort for one session (its default is xhigh)
+claude --agent boss --effort max
 
-# sharpen a design by interview first (quick, boss, argon, and carbon only)
-#   /grill-with-docs   in quick (cheap) or boss / argon / carbon (deep)
+# sharpen a design by interview first
+#   /grill-with-docs
 
 # after a session: what should change in the harness itself?
 #   /retro
@@ -163,10 +152,9 @@ kilo run --agent boss --variant max "..."
 #   /caveman           (/ultracave or /megacave compress harder)
 ```
 
-When boss, argon, or carbon plan, the plan goes to
-`docs/plans/<date>-<slug>.md` in the target repo. It ends with
-`PLAN COMPLETE`, and task statuses are updated in the file as work
-proceeds, so a run survives restarts and compaction.
+When boss plans, the plan goes to `docs/plans/<date>-<slug>.md` in the
+target repo. It ends with `PLAN COMPLETE`, and task statuses are updated
+in the file as work proceeds, so a run survives restarts and compaction.
 
 Skills update with the repo: `git pull`, then re-run the installer.
 
@@ -185,9 +173,9 @@ was written) is optional: a terminal workspace manager for coding agents.
   running.
 - A sidebar shows which agents are working, which are blocked waiting for
   you, and which have finished.
-- After a reboot it restores the layout and reopens each Kilo
-  conversation with `kilo --session <id>`. Kilo reopens a conversation in
-  the agent it last used, so a boss pane normally returns as boss.
+- After a reboot it restores the layout and reopens each conversation
+  with `claude --resume <id>`. A resumed session keeps its agent, so a
+  boss pane returns as boss.
 
 **Install.**
 
@@ -201,23 +189,24 @@ on PATH, the installer:
 
 1. copies `config/herdr/config.toml` to `%APPDATA%\herdr\config.toml`
    (`~/.config/herdr/config.toml` on macOS/Linux), backing up any
-   existing file, and `config/herdr/kilo.cjs` beside it;
-2. runs `herdr integration install kilo`, which adds
-   `~/.config/kilo/plugin/herdr-agent-state.js`;
+   existing file, and `config/herdr/claude.cjs` beside it;
+2. runs `herdr integration install claude`, which adds
+   `~/.claude/hooks/herdr-agent-state.sh` and its hook entry in
+   `settings.json`;
 3. prints `herdr integration status`.
 
-The plugin reports Kilo's state to herdr and does nothing outside a
-herdr pane. On Windows the herdr binary is unsigned, so SmartScreen may
-warn on first run.
+Unlike `~/.claude`, the herdr config is replaced, not merged. If you
+already have a herdr config of your own, copy the `[[keys.command]]`
+blocks you want out of `config/herdr/config.toml` instead.
 
-**Keys.** The prefix is ctrl+q, not herdr's default ctrl+b: in the Kilo
-TUI ctrl+b sends running subagents to the background.
+**Keys.** The prefix is ctrl+q, not herdr's default ctrl+b: in Claude
+Code ctrl+b sends a running command or subagent to the background.
 
 | Key | Action |
 |---|---|
-| `ctrl+q a` | Kilo in a new tab of this workspace |
-| `ctrl+q shift+a` | Kilo in a new worktree; asks for a branch |
-| `ctrl+q f` | Kilo in another folder, as a new workspace; asks for a path |
+| `ctrl+q a` | Claude in a new tab of this workspace |
+| `ctrl+q shift+a` | Claude in a new worktree; asks for a branch |
+| `ctrl+q f` | Claude in another folder, as a new workspace; asks for a path |
 | `ctrl+q c` | new tab with a shell |
 | `ctrl+q v` / `ctrl+q -` | split right / down |
 | `ctrl+q h`/`j`/`k`/`l` | move between panes |
@@ -226,57 +215,49 @@ TUI ctrl+b sends running subagents to the background.
 | `ctrl+q q` | detach, leaving everything running (`herdr` reattaches) |
 | `ctrl+q ?` | help |
 
-The three Kilo keys run `kilo.cjs` and type `kilo` into the new pane, so
-it starts as quick and resumes after a restart like any Kilo pane.
-`ctrl+q f` starts from the parent of the current folder: a sibling repo
-is its name plus Tab. Esc cancels either prompt.
+The three Claude keys run `claude.cjs` and type `claude --agent quick`
+into the new pane. `ctrl+q f` starts from the parent of the current
+folder: a sibling repo is its name plus Tab. Esc cancels either prompt.
 
-From a terminal outside herdr, an `hk` function does the same for the
+From a terminal outside herdr, an `hc` function does the same for the
 current folder (or one you name), then attaches. Paste this once to add it
 to your shell profile and load it in the current terminal:
 
 ```powershell
 # Windows (PowerShell)
 New-Item -ItemType Directory -Force (Split-Path $PROFILE) | Out-Null
-Add-Content $PROFILE @('', 'function hk { node "$env:APPDATA\herdr\kilo.cjs" open @args }')
+Add-Content $PROFILE @('', 'function hc { node "$env:APPDATA\herdr\claude.cjs" open @args }')
 . $PROFILE
 ```
 
 ```zsh
 # macOS (zsh)
-printf '\nhk() { node ~/.config/herdr/kilo.cjs open "$@"; }\n' >> ~/.zshrc && . ~/.zshrc
+printf '\nhc() { node ~/.config/herdr/claude.cjs open "$@"; }\n' >> ~/.zshrc && . ~/.zshrc
 ```
 
-When herdr is not running, `hk` only starts it, which restores your last
+When herdr is not running, `hc` only starts it, which restores your last
 session; press `ctrl+q f` there.
 
 **Working with it.**
 
 - One workspace per repo and one tab per task: `ctrl+q a`, or in a pane
-  run `kilo` (quick) or `kilo --agent boss` / `kilo --agent argon` /
-  `kilo --agent carbon`.
-- Start a new conversation in a new tab, not with `/new` inside a running
-  Kilo pane: herdr tracks the first session a pane reports and resumes
-  that one.
-- Keep one writer per checkout, and never open the same session in two
-  panes. On Kilo 7.8.18 a second process can delete a reply the first is
-  still writing, and a scheduled wakeup can fire twice. Both are fixed in
-  7.8.23, which has not yet reached Kilo's `latest` channel.
+  run `claude --agent quick` or `claude --agent boss`.
+- Keep one writer per checkout.
 - Parallel work in one repo goes into a worktree: `ctrl+q shift+a`, or
   `herdr worktree create --cwd . --branch <name>`. The checkout opens as
   its own workspace under `~/.herdr/worktrees/<repo>/<branch-slug>`.
   Remove it with `herdr worktree remove --workspace <id>` (ids come from
   `herdr workspace list`); this deletes the checkout and keeps the
   branch.
-- Kilo sessions in the same checkout share one Playwright browser
-  profile, and only one of them can have the browser open at a time; the
-  second gets "Browser is already in use". A worktree is a different
-  directory, so it gets its own profile.
-- Panes are started by the herdr server, so an API key set after the
-  server started may not reach new panes. Run `herdr server stop`, then
-  `herdr`: the layout returns and Kilo conversations resume.
-- Every pane running boss is a separate Opus session, and they bill in
-  parallel.
+- Sessions in the same checkout share one Playwright browser profile,
+  and only one of them can have the browser open at a time. A worktree is
+  a different directory, so it gets its own profile.
+- Panes are started by the herdr server, so an environment variable set
+  after the server started may not reach new panes. Run
+  `herdr server stop`, then `herdr`: the layout returns and
+  conversations resume.
+- Every pane running boss is a separate Opus session, and they all draw
+  on the same subscription limits.
 
 **Not used here.**
 
@@ -287,123 +268,93 @@ session; press `ctrl+q f` there.
 
 ## Design notes
 
-Each of these cost a broken run to learn, and the config encodes the fix.
-Findings re-verified on 7.8.18 (2026-11-04) say so; the rest date from
-kilo 7.4.x and are kept because each is harmless on a version that fixed
-the underlying bug.
+Each note says how it was checked. "Tested" means a real `claude -p`
+session on Claude Code 2.1.322 (2026-11-12) against a scratch project;
+"docs" means read in the Claude Code docs the same day and not run.
 
-- **`default_agent` must name a real, visible primary agent.**
-  Re-verified on 7.8.18. A missing agent aborts every run with
-  `default agent "<name>" not found`; Kilo does not fall back. Only an
-  unset key falls back to the built-in `code`. Rename or remove the
-  default agent and `default_agent` must change in the same commit.
-- **Subagents run under their own rules, not their caller's.** Changed in
-  7.8.13 (changelog) and read in `kilocode/tool/task.ts` at the v7.8.18
-  tag.
-  - A custom agent's `edit` rules and broad `bash` denies no longer cap
-    the subagents it starts. Each subagent gets the global rules plus its
-    own frontmatter, appended last so its rules win.
-  - Kilo itself denies `question`, `suggest`, and `task` in every
-    subagent: subagents cannot ask the user or spawn subagents of their
-    own.
-  - That is why gemini-coder carries its own git denies (commit, push,
-    reset, checkout, restore, stash, and other state-changing commands).
-    It shares the caller's working tree, and those commands could destroy
-    the caller's uncommitted work.
-- **The 32k output cap now binds only non-Claude models.** Since 7.8.2,
-  Claude on first-party routes requests its full output limit; every
-  other model keeps the 32,000-token cap per response, and the overflow
-  is silently truncated. The Gemini agents therefore write large files in
-  sections. boss does not need to.
-- **No temperature on Gemini agents.** Google's prompting guide (read
-  2026-11-04) says Gemini 4 and 3.6+ ignore custom `temperature`,
-  `top_p`, and `top_k`, return deprecation warning headers, and will
-  return HTTP 400 in a future release. The old `temperature: 0.1` lines
-  are gone.
-- **The grep hang is fixed.** Re-verified on 7.8.18.
-  - Old behaviour (kilo 7.4.20, Windows): a grep with more than 100
-    matches stayed `"running"` forever and wedged the session.
-  - On 7.8.18 the same test against a 300-match file returns
-    `Found 100 matches (more matches available)` and exits normally.
-  - The narrow-pattern workaround has been removed from the
-    instructions.
-  - The Bun runtime behind it is fixed too: 7.5.0 builds with Bun 1.4
-    and 7.8.7 with Bun 1.4.2. The old advice to restart long TUI sessions
-    every few hours no longer applies.
-- **Never set `steps:` on any agent.** Kilo enforces the cap by appending
-  a trailing assistant message, which Anthropic (Claude 4.6+/5) and
-  current Gemini reject at the API. Left unset, the mechanism never fires.
-  Not re-verified on 7.8.18.
-- **The turn-control tools `suggest`, `plan_enter`, and `plan_exit` are
-  denied on every custom agent.**
-  - Plans are files in `docs/plans/`, not Kilo's plan mode.
-  - A trailing turn-control call once left sessions spinning forever:
-    `suggest` after a final report (2026-08-08), and `plan_exit` parking
-    a session on a follow-up question no one could answer (2026-08-12,
-    2026-08-21).
-- **Interview skills are gated by permission.** Kilo reads only `name`
-  and `description` from skill frontmatter; the 7.8.18 binary has no
-  `disable-model-invocation`.
-  - `kilo.jsonc` denies `grilling` and `grill-with-docs` globally.
-  - quick, boss, argon, and carbon re-allow them, because only an attended
-    session has a user to interview.
-- **Kilo's deprecated built-in `orchestrator` is disabled.** It once
-  hijacked a run with generic delegation.
-- **Kilo 7.4.23 dropped `/v1` from the Anthropic API URL.**
-  - Requests went to `api.anthropic.com/messages`, which does not exist,
-    so boss failed with a bare `Not Found` and no error body naming the
-    cause.
-  - `kilo.db`'s `AI_APICallError` records carry the bad URL, and the same
-    request replayed at `/v1/messages` returns 200.
-  - The fix is the pinned `baseURL: "https://api.anthropic.com/v1"` (the
-    SDK appends `/messages`). It is harmless on versions that build the
-    URL correctly. Not re-verified on 7.8.18.
+- **No `agent` default in `settings.json`.** Tested: with
+  `"agent": "quick"` set, a boss session resumed with
+  `claude --resume <id>` came back as quick, on Sonnet and without the
+  Agent tool. With the key unset it came back as boss on Opus. herdr
+  resumes with exactly that command, so the default would silently
+  downgrade every restored boss pane. The cost is that plain `claude` is
+  not quick; the herdr keys type `claude --agent quick`.
+- **Deny rules win over allow rules.** Docs: Claude Code checks deny,
+  then ask, then allow, and an allow rule cannot carve an exception out
+  of a deny rule. Kilo's rules are last-match-wins, so two of its rules
+  needed another form here.
+  - `*.env` files are denied and `*.env.example` is carved back out with
+    a `!` negation rule. Tested: `.env` denied, `.env.example` read.
+  - "Deny curl, allow curl to localhost" has no rule form, so
+    `hooks/claude-config-guard.cjs` checks network commands. Tested:
+    `curl https://example.com` blocked, `curl http://localhost:9/` ran.
+- **Never stall, without `dontAsk` mode.** `dontAsk` denies anything
+  that would prompt, but the docs say it also denies `AskUserQuestion`,
+  which the interview skills use. So sessions stay in the default mode
+  and every tool is allowed by name. Tested: no step waited for approval.
+  `AskUserQuestion` itself was not tested: `claude -p` has no user to ask.
+- **File tools stay inside the project.** Tested:
+  `blockReadsOutsideWorkingDirectories` and
+  `blockWritesOutsideWorkingDirectories` refused a read and a write
+  outside the project. `~/.claude/skills` is added as a readable
+  directory so skills can open their own files, and an edit deny keeps it
+  read-only. Shell commands are not covered by these two keys.
+- **coder cannot change git state.** It shares boss's working tree, and
+  commands such as checkout, reset, or stash could destroy boss's
+  uncommitted work. Docs: a subagent's `disallowedTools` removes a whole
+  tool, never single commands. So the guard hook blocks those git
+  commands when the caller is coder. Tested: coder's `git commit` was
+  blocked; the same command is allowed for boss.
+- **boss cannot start quick or itself.** `Agent(quick)` and `Agent(boss)`
+  are denied, and `CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH=1` stops
+  subagents from starting subagents. Tested: dispatching quick failed
+  with the permission rule's name.
+- **An agent's prompt replaces Claude Code's system prompt.** Docs: a
+  non-empty agent body replaces the default system prompt, as
+  `--system-prompt` does; `CLAUDE.md` still loads. quick and boss
+  therefore run on their own short prompts plus the standing
+  instructions.
+- **Explore runs on Opus.** Docs: on a subscription the built-in Explore
+  subagent uses Opus, and `CLAUDE_CODE_SUBAGENT_MODEL` does not change
+  it. The variable does pin general-purpose to Sonnet.
+- **Plan mode is removed from quick and boss.** Plans are files in
+  `docs/plans/`.
+- **boss's effort level is not verified.** The frontmatter sets
+  `effort: xhigh`; nothing in the test output confirms the level the
+  session ran at.
+- **Firecrawl's unused tools are not withheld.** Kilo could deny a
+  server's tools and re-allow three. Here a deny would win over the
+  allow, so only the three are allowed and the rest stay visible to the
+  model. A session that calls one of them gets a prompt.
+- **The guard hook splits commands on shell operators itself.** It is a
+  policy check on the commands the model normally writes, not a sandbox:
+  a network call inside `$(...)` passes it.
 - **The MCP servers are installed, not fetched per session.** The
   installers put `firecrawl-mcp` and `@playwright/mcp` on PATH at pinned
-  versions. `kilo.jsonc` launches `firecrawl-mcp` and
-  `playwright-mcp --browser chrome` by name, where it used to run
-  `npx -y ...` (with Playwright at `@latest`) as each session started.
-  Verified on 7.8.18: `kilo mcp list` shows both connected when the
-  binaries are on PATH and both failed when they are not.
-- **`web_search: true` is not provider-native.** `websearch` routes to
-  Parallel through Kilo's built-in mcp-parallel transport, independent of
-  the model provider. It needs neither a Kilo account nor a search API
-  key of yours.
-- **Codebase indexing ships configured but disabled.** The `indexing`
-  block in `config/kilo.jsonc` uses gemini-embedding-001 and embedded
-  LanceDB, with the key via `{env:GOOGLE_GENERATIVE_AI_API_KEY}`.
-  - Turn it on by flipping `enabled` to true (indexes every workspace),
-    or per project with `/indexing` in the TUI.
-  - The `semantic_search` tool then appears in every agent's roster.
-    Agents use it first when it is present and skip it when it is not.
-- **Compaction runs at 40% of the context window, on Flash.** The 7.8.20
-  release candidate fixes auto-compaction starting well before the
-  configured threshold; on the 7.8.18 pin it can fire early.
-- **The installers mirror agents and skills.** Deleting a file in
-  `config/agents/` or `skills/` removes it from the live config on the
-  next install, so retired agents cannot linger in the picker.
+  versions and register them by name. On Windows, whether Claude Code
+  starts the npm `.cmd` shims by bare name has not been tested.
 
 ## What's in the box
 
 ```
-config/kilo.jsonc          global config: models, providers, permissions, MCP, compaction
-config/instructions.md     standing instructions injected into every agent
-config/agents/*.md         the five agents (system prompt + permissions each)
+config/settings.json       permissions, env, and the hook entry merged into ~/.claude/settings.json
+config/instructions.md     standing instructions, imported from ~/.claude/CLAUDE.md
+config/agents/*.md         the three agents (system prompt + tools each)
+config/hooks/              the PreToolUse guard: localhost-only network, no git state changes for coder
 config/herdr/config.toml   Herdr TUI config (optional; installed when herdr is on PATH)
-config/herdr/kilo.cjs      launchers behind herdr's Kilo keys and `hk`
-skills/                    every skill the harness loads (vendored + local codebase-map)
+config/herdr/claude.cjs    launchers behind herdr's Claude keys and `hc`
+skills/                    every skill the harness ships (vendored + local codebase-map)
 skills/vendor.psd1         upstream repo, pinned commit, license files per vendored skill
+scripts/install-config.cjs the ~/.claude merge both installers run
 scripts/sync-skills.ps1    re-vendors skills from vendor.psd1, checks dependency closure
 install.ps1 / install.sh   one-shot setup
-docs/plans/                plans for changes to this repo
+docs/plans/                plans from the upstream Kilo repo, kept as history
 ```
 
 ## Skills
 
-Every skill the harness loads ships in `skills/`. The installers mirror
-that folder into `~/.kilo/skills` and remove anything else there (the
-pre-install backup keeps it). To keep a skill of your own, add it to
-`skills/`.
+Every skill the harness ships is in `skills/`. The installers copy each
+one into `~/.claude/skills` by name and leave your other skills alone.
 
 Third-party skills are vendored byte-for-byte at the commits pinned in
 `skills/vendor.psd1` (last refreshed to upstream HEAD on 2026-11-04).

@@ -11,7 +11,7 @@ param([switch]$Latest, [switch]$CheckOnly)
 $ErrorActionPreference = 'Stop'
 $skillsDir = Join-Path (Split-Path -Parent $PSScriptRoot) 'skills'
 $manifest = Import-PowerShellDataFile (Join-Path $skillsDir 'vendor.psd1')
-$work = Join-Path $env:TEMP 'kilo\skill-sync'
+$work = Join-Path $env:TEMP 'claude-code-config\skill-sync'
 New-Item -ItemType Directory -Force $work | Out-Null
 
 $catalog = @()

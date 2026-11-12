@@ -21,8 +21,8 @@ them for. `kopipasta map --json` prints the repository's symbol skeleton
 locally - no model call, no network, no cost, nothing written - so you
 decide *what to read* before you decide *what to pay for*.
 
-One tool comes before this skill when it exists: `semantic_search` (Kilo's
-codebase-indexing feature, present in the tool roster only when the
+One tool comes before this skill when it exists: `semantic_search` (a
+codebase-indexing tool, present in the tool roster only when the
 project is indexed). It answers "where is the code that does X" by meaning
 and returns snippets with paths and line numbers - try it first for
 locate-by-behaviour questions. The map remains the free structural
@@ -179,7 +179,7 @@ kopipasta config --show     # prints what resolved and whether a key is set
 
 Needs `~/.config/kopipasta/config.toml` (`[ask] provider/model`) plus
 `GEMINI_API_KEY`, `ANTHROPIC_API_KEY` or `OPENAI_API_KEY` - note these are
-*not* the variables Kilo itself uses. **Exit 2 means no usable backend: do
+*not* what Claude Code itself uses. **Exit 2 means no usable backend: do
 not retry, fall back to Move 1 and say the oracle was unavailable.** Do not
 spend a paid call without a stated reason.
 
@@ -220,7 +220,7 @@ usage error, run `kopipasta ask --help` and use whichever your build shows.
 
 ## Scope
 
-- `kopipasta apply` is **not** part of this skill. Kilo's `edit`/`write`
+- `kopipasta apply` is **not** part of this skill. Claude Code's `Edit`/`Write`
   tools own file mutation; a second patcher is a second way to corrupt a
   file.
 - In a read-only role (a reviewer, the explore subagent), `map` is

@@ -3,60 +3,63 @@
 Facts every agent needs when working in THIS repository. Read once, trust,
 do not re-derive.
 
-- This repo is prose and configuration: the Kilo CLI global config
-  (`config/kilo.jsonc`), standing instructions (`config/instructions.md`),
-  agent prompts (`config/agents/*.md`), installers, and every skill the
-  harness loads (`skills/`). Nothing here executes at runtime except the
-  installers, `config/herdr/kilo.cjs` (run by herdr's Kilo keys), and the
-  maintainer-run `scripts/sync-skills.ps1`.
+- This repo is prose and configuration: the Claude Code settings it
+  merges (`config/settings.json`), standing instructions
+  (`config/instructions.md`), agent prompts (`config/agents/*.md`),
+  installers, and every skill the harness ships (`skills/`). Nothing here
+  executes at runtime except the installers with
+  `scripts/install-config.cjs`, `config/hooks/claude-config-guard.cjs`
+  (a PreToolUse hook), `config/herdr/claude.cjs` (run by herdr's Claude
+  keys), and the maintainer-run `scripts/sync-skills.ps1`.
+- It is a fork of Git-Uzair/Kilo-Code-Config (the `upstream` remote),
+  which targets the Kilo CLI. `docs/plans/` holds upstream's plans and is
+  history, not a description of this repo.
 - `skills/` holds vendored third-party skills (byte copies at the
   commits pinned in `skills/vendor.psd1`) plus the local `codebase-map`.
   Never hand-edit a vendored folder - the next sync overwrites it; adapt
   the harness around a skill in `config/` instead.
 - There is NO test suite, NO build, and NO lint command - and none should
   ever be bootstrapped. Changes here are verified by reading the diff
-  against the request. Changes under `config/` can also be load-checked
-  without touching the live config: copy `config/kilo.jsonc` and
-  `config/instructions.md` into `<tmp>/kilo/` and `config/agents/*.md`
-  into `<tmp>/kilo/agents/`, set `XDG_CONFIG_HOME=<tmp>`, then run
-  `kilo config check`, `kilo agent list`, and `kilo debug agent <name>`
-  (resolved model, variant, and permission rules). A live `kilo run`
-  there still reads the installed instructions file: the `~/` in the
-  `instructions` entry expands to the real home directory, not
-  `XDG_CONFIG_HOME` (kilo `session/instruction.ts`), so point the scratch
-  copy's entry at its own `instructions.md` before testing prompt
-  behaviour.
+  against the request. Changes under `config/` can also be checked
+  without touching the live config:
+  - `CLAUDE_CONFIG_DIR=<tmp> node scripts/install-config.cjs test` runs
+    the merge into a scratch folder.
+  - A scratch config folder has no login. To run a real session, copy
+    the scratch `agents/` and `skills/` into `<project>/.claude/`, point
+    the hook path in a copy of `config/settings.json` at the scratch
+    hook, and run `claude -p --setting-sources project --settings
+    <that copy> --agent <name> "..."` inside the project.
 - Prose wraps at roughly 76 columns. That is a style preference for new
   text you write - never an acceptance criterion, never a verification
   finding, and never a reason to re-wrap lines you did not otherwise
   touch.
-- `KiloCode.md` in the repo root is downloaded vendor documentation,
-  gitignored on purpose. Never commit it, never audit it.
-- `docs/plans/` may contain absolute local paths; sanitize new plan files
-  before committing them.
 - This repo is the source of truth that the installers copy FROM. The
-  installed live config lives at `~/.config/kilo/` - editing that
-  directly is always wrong here; edit `config/` and re-run `install.ps1`
-  (or copy the changed file over manually when asked). The installers
-  mirror `config/agents/` and `skills/`: a file deleted here disappears
-  from the live config on the next install.
-- `~/.config/kilo/plugin/` belongs to herdr, not to this repo:
-  `herdr integration install kilo` writes `herdr-agent-state.js` there.
-  The installers must never mirror or clean that folder, or a reinstall
-  silently breaks herdr's Kilo state reporting and session resume.
-  `config/herdr/config.toml` is herdr's own config; the installers copy
-  it, with the `kilo.cjs` its keybindings load from beside it, only when
-  `herdr` is on PATH.
-- The MCP servers in `config/kilo.jsonc` (`mcp.firecrawl`,
-  `mcp.playwright`) launch installed binaries by name; both installers
-  pin their npm packages next to the Kilo pin. Changing a server's
-  package, version, or command means updating `kilo.jsonc` and both
-  installers in the same change.
-- An agent's name is its filename in `config/agents/`. Renaming or
-  removing one means updating, in the same change: `default_agent` in
-  `config/kilo.jsonc` (a missing default agent aborts every run), the
-  `permission.task` lists of the agents that dispatch it, the installers'
-  expected-roster lines, and the README.
+  installed live config lives in `~/.claude/` - editing that directly is
+  always wrong here; edit `config/` and re-run the installer.
+- `~/.claude` belongs to the user, not to this repo. The installers
+  merge into `settings.json`, append one import line to `CLAUDE.md`, and
+  copy agents and skills by name; they must never replace or mirror a
+  whole folder there. `~/.claude/claude-code-config.json` is the manifest
+  of what was installed.
+- `~/.claude/hooks/herdr-agent-state.sh` and its hook entry in
+  `settings.json` belong to herdr: `herdr integration install claude`
+  writes them. The settings merge must keep hook entries it does not own.
+- `config/settings.json` must not set `"agent"`: the default agent
+  overrides the agent of a resumed session (README design notes).
+- Permission rules are deny-first. An allow rule cannot carve an
+  exception out of a deny rule; use a `!` negation rule for paths or the
+  guard hook for commands.
+- The MCP servers (`firecrawl`, `playwright`) launch installed binaries
+  by name; both installers pin their npm packages and register them with
+  `claude mcp add`. Changing a server's package, version, or command
+  means updating both installers and the allow rules in
+  `config/settings.json` in the same change.
+- An agent's name is its `name` field, matched by its filename in
+  `config/agents/`. Renaming or removing one means updating, in the same
+  change: the `Agent(...)` deny rules in `config/settings.json`, the
+  `agent_type` check in the guard hook, `config/herdr/claude.cjs` when
+  it is the agent the herdr keys start, the installers' expected-roster
+  lines, and the README.
 - Commits go straight to `main`, one commit per task, message style per
   `git log` (`feat:`, `fix:`, `docs:`, `chore:`, `agents:`). Push only
   when asked.
